@@ -1,74 +1,235 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import type { Test } from "@/types";
-import { submitTestAction } from "@/app/student/tests/actions";
+import {
+  saveTestDraftAction,
+  submitTestAction,
+} from "@/app/student/tests/actions";
 
-export function TestTaker({ test }: { test: Test }) {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ score: number; total: number } | null>(null);
+type SubmissionResult = {
+  score: number;
+  total: number;
+  gradingStatus: "needs_review" | "graded";
+};
+
+export function TestTaker({
+  test,
+  startedAt,
+  initialAnswers,
+}: {
+  test: Test;
+  startedAt: string;
+  initialAnswers: Record<string, string>;
+}) {
+  const [answers, setAnswers] =
+    useState<Record<string, string>>(initialAnswers);
+  const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [error, setError] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState(() =>
+    Math.max(
+      0,
+      Math.ceil(
+        (new Date(startedAt).getTime() +
+          test.duration_minutes * 60_000 -
+          Date.now()) /
+          1000,
+      ),
+    ),
+  );
   const [isPending, startTransition] = useTransition();
+  const initialSave = useRef(true);
+  const saveSequence = useRef(0);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
-  function handleSubmit() {
+  const submit = useCallback(() => {
+    if (isPending || result) return;
+    setError("");
     startTransition(async () => {
-      const res = await submitTestAction(test.id, answers);
-      if (res.success) setResult({ score: res.score!, total: res.total! });
+      const response = await submitTestAction(test.id, answers);
+      if (response.success) {
+        setResult({
+          score: response.score,
+          total: response.total,
+          gradingStatus: response.gradingStatus,
+        });
+      } else {
+        setError(response.message);
+      }
     });
-  }
+  }, [answers, isPending, result, test.id]);
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const deadline =
+        new Date(startedAt).getTime() + test.duration_minutes * 60_000;
+      setRemainingSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    };
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 1000);
+    return () => window.clearInterval(interval);
+  }, [startedAt, test.duration_minutes]);
+
+  useEffect(() => {
+    if (initialSave.current) {
+      initialSave.current = false;
+      return;
+    }
+    if (result) return;
+
+    const sequence = ++saveSequence.current;
+    const timeout = window.setTimeout(() => {
+      setSaveStatus("Saving progress…");
+      const queuedSave = saveQueue.current.then(async () => {
+        const response = await saveTestDraftAction(test.id, answers);
+        if (sequence !== saveSequence.current) return;
+        if (response.success) {
+          setSaveStatus("Progress saved");
+          setError("");
+        } else {
+          setSaveStatus("");
+          setError(response.message);
+        }
+      });
+      saveQueue.current = queuedSave.catch((reason: unknown) => {
+        if (sequence !== saveSequence.current) return;
+        setSaveStatus("");
+        setError(
+          reason instanceof Error
+            ? `Could not save progress: ${reason.message}`
+            : "Could not save progress. Check your connection and try again.",
+        );
+      });
+    }, 800);
+    return () => window.clearTimeout(timeout);
+  }, [answers, result, test.id]);
+
+  useEffect(() => {
+    if (remainingSeconds === 0 && !result && !isPending) submit();
+  }, [remainingSeconds, result, isPending, submit]);
 
   if (result) {
     return (
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 text-center">
-        <p className="text-sm text-gray-500 mb-1">Your score</p>
-        <p className="text-4xl font-semibold text-brand-600">{result.score} / {result.total}</p>
-        <p className="text-sm text-gray-400 mt-2">Short-answer questions aren&apos;t auto-graded and are excluded from this score.</p>
+      <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+        <p className="text-sm text-gray-500">
+          {result.gradingStatus === "graded"
+            ? "Assessment submitted"
+            : "Assessment submitted — instructor review pending"}
+        </p>
+        <p className="mt-2 text-4xl font-semibold text-brand-600">
+          {result.score} / {result.total}
+        </p>
+        {result.gradingStatus === "needs_review" && (
+          <p className="mt-2 text-sm text-gray-500">
+            Your short-answer and coding responses will be graded by your
+            instructor.
+          </p>
+        )}
       </div>
     );
   }
 
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+
   return (
     <div className="space-y-4">
-      {test.questions.map((q, idx) => (
-        <div key={q.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-          <p className="text-sm font-medium mb-3">
-            {idx + 1}. {q.prompt} <span className="text-xs text-gray-400 font-normal">({q.marks} marks)</span>
-          </p>
+      <div
+        className={`sticky top-2 z-10 rounded-xl border p-3 text-center text-sm font-semibold shadow-sm ${
+          remainingSeconds <= 60
+            ? "border-red-200 bg-red-50 text-red-700"
+            : "border-gray-200 bg-white text-gray-700"
+        }`}
+        aria-live="polite"
+      >
+        Time remaining: {minutes}:{String(seconds).padStart(2, "0")}
+      </div>
 
-          {(q.type === "multiple_choice" || q.type === "true_false") && (
+      {test.questions.map((question, index) => (
+        <section
+          key={question.id}
+          className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+        >
+          <p className="mb-3 text-sm font-medium">
+            {index + 1}. {question.prompt}{" "}
+            <span className="text-xs font-normal text-gray-400">
+              ({question.marks} marks)
+            </span>
+          </p>
+          {(question.type === "multiple_choice" ||
+            question.type === "true_false") && (
             <div className="space-y-2">
-              {q.options?.map((opt) => (
-                <label key={opt} className="flex items-center gap-2 text-sm">
+              {question.options?.map((option, optionIndex) => (
+                <label
+                  key={`${question.id}-${optionIndex}`}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-100 p-3 text-sm hover:bg-gray-50"
+                >
                   <input
                     type="radio"
-                    name={q.id}
-                    value={opt}
-                    checked={answers[q.id] === opt}
-                    onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
+                    name={question.id}
+                    value={option}
+                    checked={answers[question.id] === option}
+                    onChange={() =>
+                      setAnswers((current) => ({
+                        ...current,
+                        [question.id]: option,
+                      }))
+                    }
                   />
-                  {opt}
+                  {option}
                 </label>
               ))}
             </div>
           )}
-
-          {(q.type === "short_answer" || q.type === "coding") && (
+          {(question.type === "short_answer" || question.type === "coding") && (
             <textarea
-              rows={q.type === "coding" ? 6 : 2}
-              value={answers[q.id] ?? ""}
-              onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono"
-              placeholder="Your answer…"
+              rows={question.type === "coding" ? 10 : 4}
+              value={answers[question.id] ?? ""}
+              onChange={(event) =>
+                setAnswers((current) => ({
+                  ...current,
+                  [question.id]: event.target.value,
+                }))
+              }
+              className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${
+                question.type === "coding"
+                  ? "font-mono"
+                  : ""
+              }`}
+              placeholder={
+                question.type === "coding"
+                  ? "Write your code here. It will be reviewed by your instructor."
+                  : "Your answer…"
+              }
             />
           )}
-        </div>
+        </section>
       ))}
 
+      {error && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {saveStatus && (
+        <p role="status" className="text-right text-xs text-gray-500">
+          {saveStatus}
+        </p>
+      )}
       <button
-        onClick={handleSubmit}
+        type="button"
+        onClick={submit}
         disabled={isPending}
-        className="rounded-lg bg-brand-500 text-white px-5 py-2.5 text-sm font-medium hover:bg-brand-600 disabled:opacity-60"
+        className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
       >
-        {isPending ? "Submitting…" : "Submit Test"}
+        {isPending ? "Submitting…" : "Submit assessment"}
       </button>
     </div>
   );

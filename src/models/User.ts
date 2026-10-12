@@ -1,4 +1,4 @@
-import { model, models, type InferSchemaType, Schema } from "mongoose";
+ import { model, models, type InferSchemaType, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
 const userSchema = new Schema(
@@ -19,6 +19,16 @@ const userSchema = new Schema(
       default: "super_admin",
       required: true,
     },
+    department_id: {
+      type: String,
+      ref: "Department",
+    },
+    cohort_id: { type: String, ref: "Cohort", required: false },
+    level_id: { type: String, required: false },
+    total_fee: { type: Number, min: 0, required: false },
+    amount_paid: { type: Number, min: 0, required: false },
+    staff_id: { type: String, trim: true },
+    student_id: { type: String, trim: true },
     password: { type: String, required: true, select: false },
     isActive: { type: Boolean, default: true, required: true },
     lastLoginAt: { type: Date },

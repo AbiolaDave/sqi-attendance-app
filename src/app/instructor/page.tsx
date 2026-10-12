@@ -15,21 +15,22 @@ export default async function InstructorDashboard() {
   const profile = await requireProfile(["instructor"]);
   const today = new Date().toISOString().slice(0, 10);
 
-  const cohortIds = getCohortIdsForInstructor(profile.id);
+  const cohortIds = await getCohortIdsForInstructor(profile._id);
+
   const [students, todaysClasses, instructors, levels] = await Promise.all([
     getStudentsVisibleTo(profile),
-    getClassesForInstructor(profile.id, today),
+    getClassesForInstructor(profile._id, today),
     getInstructors(),
     getLevels(),
   ]);
   const currentInstructor = instructors.find(
-    (instructor) => instructor.id === profile.id,
+    (instructor) => instructor.id === profile._id,
   );
 
   const classRows = await Promise.all(
     todaysClasses.map(async (c) => ({
       ...c,
-      courseName: await getCourseName(c.course_id),
+      courseName: await getCourseName(c.cohort_id),
       cohortName: await getCohortName(c.cohort_id),
     })),
   );
@@ -38,7 +39,7 @@ export default async function InstructorDashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">
+          <h1 className="text-xl text-blue-600 font-semibold">
             Welcome back, {profile.full_name.split(" ")[0]}
           </h1>
           <p className="text-sm text-gray-500">
@@ -58,19 +59,21 @@ export default async function InstructorDashboard() {
 
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="font-medium text-sm">Today&apos;s Schedule</h2>
+          <h2 className="font-medium text-indigo-600 text-sm">
+            Today&apos;s Schedule
+          </h2>
         </div>
         <div className="divide-y divide-gray-100">
           {classRows.map((c) => (
             <div
               key={c.id}
-              className="px-5 py-3 flex items-center justify-between text-sm"
+              className="px-5 py-3 flex items-center text-blue-500 justify-between text-sm"
             >
               <span>
                 {c.courseName} — {c.cohortName}
               </span>
-              <span className="text-gray-400">
-                {c.start_time}–{c.end_time} · {c.location ?? "TBA"}
+              <span className="text-blue-400">
+                {c.start_time}–{c.end_time}
               </span>
             </div>
           ))}

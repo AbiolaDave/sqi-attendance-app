@@ -5,15 +5,23 @@ export type AttendanceStatus = "present" | "absent" | "late" | "excused";
 export type BalanceStatus = "fully_paid" | "partially_paid" | "outstanding";
 
 export interface Profile {
-  id: string;
+  _id: string;
   role: UserRole;
   full_name: string;
   email: string;
+  phone?: string;
+  department_id?: string;
+  cohort_id?: string;
+  level_id?: string;
+  total_fee?: number;
+  amount_paid?: number;
+  staff_id?: string;
+  student_id?: string;
 }
 
-export interface Department {
+export interface DepartmentType {
   id: string;
-  name: string;
+  department: string;
   description?: string;
 }
 
@@ -29,6 +37,11 @@ export interface Cohort {
   level_id: string;
   name: string;
   start_date?: string;
+  course_id?: string;
+  course_name?: string;
+  instructor_id: string;
+  instructor_ids: string[];
+  schedule: CohortSchedule[];
 }
 
 export interface CohortSchedule {
@@ -117,6 +130,7 @@ export interface TestQuestion {
   options?: string[];
   correct_answer?: string;
   marks: number;
+  explanation?: string;
 }
 
 export interface Test {
@@ -142,6 +156,8 @@ export interface TestSubmission {
   submitted_at: string;
   score: number;
   answers: Record<string, string>;
+  grading_status?: "in_progress" | "needs_review" | "graded";
+  started_at?: string;
 }
 
 export interface Assignment {
@@ -154,6 +170,7 @@ export interface Assignment {
   cohort_id: string;
   due_date: string;
   max_score: number;
+  questions?: TestQuestion[];
 }
 
 export type SubmissionStatus =
@@ -170,7 +187,10 @@ export interface AssignmentSubmission {
   file_name?: string;
   status: SubmissionStatus;
   score?: number;
+  auto_score?: number;
   feedback?: string;
+  answers?: Record<string, string>;
+  student_name?: string;
 }
 
 // --- Practice & interview prep -----------------------------------------
@@ -185,6 +205,30 @@ export interface PracticeQuestion {
   options?: string[];
   correct_answer: string;
   explanation?: string;
+}
+
+export interface PracticeQuiz {
+  id: string;
+  title: string;
+  description: string;
+  department_id: string;
+  level_id: string;
+  cohort_id: string;
+  course_id: string;
+  duration_minutes: number;
+  total_marks: number;
+  questions: TestQuestion[];
+  published: boolean;
+}
+
+export interface PracticeAttempt {
+  id: string;
+  practice_id: string;
+  student_id: string;
+  score: number;
+  total_marks: number;
+  answers: Record<string, string>;
+  submitted_at: string;
 }
 
 export interface PracticeProgress {

@@ -4,62 +4,23 @@ import type { UserRole } from "@/types";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/models/User";
 
-// ---------------------------------------------------------------------
-// Student and instructor sessions remain mock data while admin sessions use
-// the MongoDB Admin collection.
-// ---------------------------------------------------------------------
-// This remembers which mock student or instructor is active in a plain,
-// readable cookie so the role-based pages/nav have something to key off.
-//
-// Admin sessions are issued by the real login endpoint and resolved from
-// MongoDB below. The remaining mock identities can be replaced as the other
-// roles move to the database.
-// ---------------------------------------------------------------------
-
 export const SESSION_COOKIE = "sqi_mock_session";
 
-export interface MockUser {
-  id: string;
+export interface UserType {
+  _id: string;
   role: UserRole;
   full_name: string;
   email: string;
+  department_id?: string;
+  cohort_id?: string;
+  staff_id?: string;
+  student_id?: string;
+  total_fee?: number;
+  amount_paid?: number;
+  level_id?: string;
 }
 
-// Demo identities for the roles that are not database-backed yet.
-export const MOCK_USERS: MockUser[] = [
-  {
-    id: "instr-1",
-    role: "instructor",
-    full_name: "John Doe",
-    email: "john.doe@sqi.edu.ng",
-  },
-  {
-    id: "instr-2",
-    role: "instructor",
-    full_name: "Grace Nwosu",
-    email: "grace.nwosu@sqi.edu.ng",
-  },
-  {
-    id: "stud-1",
-    role: "student",
-    full_name: "Michael Smith",
-    email: "michael.smith@student.sqi.edu.ng",
-  },
-  {
-    id: "stud-2",
-    role: "student",
-    full_name: "Jane Doe",
-    email: "jane.doe@student.sqi.edu.ng",
-  },
-  {
-    id: "stud-3",
-    role: "student",
-    full_name: "Michael Smith II",
-    email: "michael.smith2@student.sqi.edu.ng",
-  },
-];
-
-export async function getCurrentUser(): Promise<MockUser | null> {
+export async function getCurrentUser(): Promise<UserType | null> {
   const sessionId = cookies().get(SESSION_COOKIE)?.value;
   if (!sessionId) return null;
 
@@ -69,22 +30,32 @@ export async function getCurrentUser(): Promise<MockUser | null> {
       const user = await User.findById(sessionId.slice("admin:".length));
       if (!user || !user.isActive) return null;
       return {
-        id: String(user._id),
-        role: "super_admin",
+        _id: String(user._id),
+        role: user.role === "admin" ? "super_admin" : user.role,
         full_name: user.full_name,
         email: user.email,
+        department_id: user.department_id,
+        cohort_id: user.cohort_id,
+        staff_id: user.staff_id,
+        student_id: user.student_id,
+        total_fee: user.total_fee,
+        amount_paid: user.amount_paid,
+        level_id: user.level_id,
       };
     } catch {
       return null;
     }
   }
 
-  return MOCK_USERS.find((u) => u.id === sessionId) ?? null;
+  const users = await User.find();
+  return (
+    users.find((u: { _id: string }) => String(u._id) === sessionId) ?? null
+  );
 }
 
 export async function requireUser(
   allowedRoles?: UserRole[],
-): Promise<MockUser> {
+): Promise<UserType> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (allowedRoles && !allowedRoles.includes(user.role)) {

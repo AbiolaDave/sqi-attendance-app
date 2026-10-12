@@ -1,19 +1,33 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth";
 import { submitAssignment as submitAssignmentQuery } from "@/lib/data/queries";
-import { revalidatePath } from "next/cache";
 
-export async function submitAssignment(formData: FormData) {
+export async function submitAssignmentAction(
+  assignmentId: string,
+  answers: Record<string, string>,
+) {
   const profile = await requireProfile(["student"]);
-  const assignmentId = String(formData.get("assignment_id") ?? "");
-  const fileName = String(formData.get("file_name") ?? "").trim();
-  if (!assignmentId || !fileName) return;
-
-  // NOTE: there's no real file upload here — just a text field
-  // standing in for a filename. Wire this to real storage (S3,
-  // Supabase Storage, your own upload endpoint, etc.) when you build
-  // the backend.
-  submitAssignmentQuery(assignmentId, profile.id, fileName);
-  revalidatePath("/student/assignments");
+  if (
+    typeof assignmentId !== "string" ||
+    !answers ||
+    typeof answers !== "object" ||
+    Array.isArray(answers) ||
+    Object.values(answers).some(
+      (answer) => typeof answer !== "string" || answer.length > 20_000,
+    )
+  ) {
+    return { success: false as const, message: "Invalid assignment response." };
+  }
+  const result = await submitAssignmentQuery(
+    assignmentId,
+    profile._id,
+    answers,
+  );
+  if (result.success) {
+    revalidatePath("/student/assignments");
+    revalidatePath("/instructor/assignments");
+  }
+  return result;
 }

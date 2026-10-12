@@ -1,68 +1,182 @@
 import { requireProfile } from "@/lib/auth";
-import { getAssignmentsVisibleTo, getSubmissionsForAssignment, getProfile, getCourseName } from "@/lib/data/queries";
-import { gradeSubmission } from "./actions";
+import { connectToDatabase } from "@/lib/mongodb";
+import {
+  getAssignmentsVisibleTo,
+  getCourses,
+  getSubmissionsForAssignment,
+} from "@/lib/data/queries";
+import { CohortModel } from "@/models/Cohort";
+import { InstructorAssignmentBuilder } from "@/components/assignments/InstructorAssignmentBuilder";
+import { GradeAssignmentForm } from "@/components/assignments/GradeAssignmentForm";
 
 export default async function InstructorAssignmentsPage() {
   const profile = await requireProfile(["instructor"]);
-  const assignments = await getAssignmentsVisibleTo(profile);
-
+  await connectToDatabase();
+  const [assignments, courses, cohorts] = await Promise.all([
+    getAssignmentsVisibleTo(profile),
+    getCourses(profile.department_id),
+    CohortModel.find({
+      $or: [
+        { instructor_id: profile._id },
+        { instructor_ids: profile._id },
+      ],
+    })
+      .select("_id name course_id course_name")
+      .sort({ name: 1 })
+      .lean(),
+  ]);
+  const cohortNames = new Map(
+    cohorts.map((cohort) => [String(cohort._id), cohort.name]),
+  );
+  const courseNames = new Map(courses.map((course) => [course.id, course.name]));
   const rows = await Promise.all(
-    assignments.map(async (a) => ({
-      assignment: a,
-      courseName: await getCourseName(a.course_id),
-      submissions: await getSubmissionsForAssignment(a.id),
-    }))
+    assignments.map(async (assignment) => ({
+      assignment,
+      submissions: await getSubmissionsForAssignment(assignment.id),
+    })),
   );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Assignments</h1>
-        <p className="text-sm text-gray-500">Submissions for assignments in your cohorts.</p>
+        <p className="text-sm text-gray-500">
+          Write an assignment with questions and select one of the cohorts you
+          teach. Students answer in the app.
+        </p>
       </div>
 
-      <div className="space-y-4">
-        {rows.map(({ assignment, courseName, submissions }) => (
-          <div key={assignment.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm">
-            <div className="p-5 border-b border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">{courseName}</p>
-              <h2 className="font-medium">{assignment.title}</h2>
-              <p className="text-xs text-gray-400 mt-1">Due {new Date(assignment.due_date).toLocaleDateString()} · {submissions.length} submission(s)</p>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {await Promise.all(
-                submissions.map(async (s) => {
-                  const studentProfile = await getProfile(s.student_id);
-                  return (
-                    <div key={s.id} className="p-4 flex items-center justify-between flex-wrap gap-3">
+      <details className="group rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <summary className="cursor-pointer list-none px-5 py-4 font-medium">
+          <span>Create an assignment</span>
+          <span className="float-right text-sm text-brand-700 group-open:hidden">
+            + New
+          </span>
+          <span className="float-right hidden text-sm text-gray-500 group-open:inline">
+            Close
+          </span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          {cohorts.length ? (
+            <InstructorAssignmentBuilder
+              cohorts={cohorts.map((cohort) => ({
+                id: String(cohort._id),
+                name: cohort.name,
+                course_name:
+                  cohort.course_name ??
+                  (cohort.course_id ? courseNames.get(cohort.course_id) : undefined),
+              }))}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">
+              Create or join a cohort before creating an assignment.
+            </p>
+          )}
+        </div>
+      </details>
+
+      <section className="space-y-4">
+        {rows.map(({ assignment, submissions }) => {
+          const canGrade = (assignment.questions ?? []).some(
+            (question) =>
+              question.type === "short_answer" ||
+              question.type === "coding",
+          );
+          return (
+            <article
+              key={assignment.id}
+              className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+            >
+              <header className="border-b border-gray-100 p-5">
+                <p className="text-xs text-gray-400">
+                  {courseNames.get(assignment.course_id) ?? "Course"} ·{" "}
+                  {cohortNames.get(assignment.cohort_id) ?? "Cohort"}
+                </p>
+                <h2 className="mt-1 font-medium">{assignment.title}</h2>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-500">
+                  {assignment.description}
+                </p>
+                <p className="mt-2 text-xs text-gray-400">
+                  Due {assignment.due_date} · {assignment.questions?.length ?? 0}{" "}
+                  questions · {assignment.max_score} marks ·{" "}
+                  {submissions.length} submission(s)
+                </p>
+              </header>
+              <div className="divide-y divide-gray-100">
+                {submissions.map((submission) => (
+                  <div key={submission.id} className="space-y-3 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium">{studentProfile?.full_name}</p>
+                        <p className="text-sm font-medium">
+                          {submission.student_name}
+                        </p>
                         <p className="text-xs text-gray-400">
-                          {s.file_name} · <span className="capitalize">{s.status}</span>
+                          {submission.submitted_at
+                            ? new Date(submission.submitted_at).toLocaleString()
+                            : "Not submitted"}{" "}
+                          · <span className="capitalize">{submission.status}</span>
                         </p>
                       </div>
-                      {s.status === "graded" ? (
-                        <span className="text-sm font-medium text-green-600">{s.score}/{assignment.max_score}</span>
-                      ) : (
-                        <form action={gradeSubmission} className="flex gap-2 items-center">
-                          <input type="hidden" name="submission_id" value={s.id} />
-                          <input name="score" type="number" max={assignment.max_score} placeholder="Score" required className="w-20 rounded-lg border border-gray-300 px-2 py-1.5 text-sm" />
-                          <input name="feedback" placeholder="Feedback (optional)" className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm" />
-                          <button type="submit" className="rounded-lg bg-brand-500 text-white px-3 py-1.5 text-xs font-medium hover:bg-brand-600">
-                            Grade
-                          </button>
-                        </form>
-                      )}
+                      <GradeAssignmentForm
+                        submissionId={submission.id}
+                        currentScore={
+                          submission.score !== undefined &&
+                          submission.auto_score !== undefined
+                            ? submission.score - submission.auto_score
+                            : undefined
+                        }
+                        maxScore={
+                          (assignment.questions ?? []).reduce(
+                            (total, question) =>
+                              total +
+                              (question.type === "short_answer" ||
+                              question.type === "coding"
+                                ? question.marks
+                                : 0),
+                            0,
+                          )
+                        }
+                        canGrade={canGrade}
+                        feedback={submission.feedback}
+                      />
                     </div>
-                  );
-                })
-              )}
-              {submissions.length === 0 && <p className="p-4 text-sm text-gray-400">No submissions yet.</p>}
-            </div>
-          </div>
-        ))}
-        {rows.length === 0 && <p className="text-sm text-gray-400">No assignments yet.</p>}
-      </div>
+                    <div className="space-y-2">
+                      {(assignment.questions ?? []).map((question, index) => (
+                        <div
+                          key={question.id}
+                          className="rounded-lg bg-gray-50 p-3 text-sm"
+                        >
+                          <p className="font-medium">
+                            {index + 1}. {question.prompt} ({question.marks}{" "}
+                            marks)
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-gray-600">
+                            {submission.answers?.[question.id] || "No answer"}
+                          </p>
+                          {(question.type === "multiple_choice" ||
+                            question.type === "true_false") && (
+                            <p className="mt-1 text-xs text-gray-400">
+                              Correct: {question.correct_answer}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {submissions.length === 0 && (
+                  <p className="p-4 text-sm text-gray-400">
+                    No submissions yet.
+                  </p>
+                )}
+              </div>
+            </article>
+          );
+        })}
+        {rows.length === 0 && (
+          <p className="text-sm text-gray-400">No assignments yet.</p>
+        )}
+      </section>
     </div>
   );
 }

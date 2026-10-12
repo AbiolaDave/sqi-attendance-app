@@ -1,5 +1,5 @@
+import { Department } from "@/models/Departments";
 import type {
-  Department,
   Level,
   Cohort,
   CohortSchedule,
@@ -34,29 +34,7 @@ import type {
 // — that's the only file the rest of the app talks to, so pages
 // themselves shouldn't need to change.
 // ---------------------------------------------------------------------
-
-export const departments: Department[] = [
-  {
-    id: "dept-se",
-    name: "Software Engineering",
-    description: "Full-stack web and mobile development",
-  },
-  {
-    id: "dept-ds",
-    name: "Data Science",
-    description: "Data analysis, machine learning and statistics",
-  },
-  {
-    id: "dept-cyber",
-    name: "Cybersecurity",
-    description: "Network security and ethical hacking",
-  },
-  {
-    id: "dept-uiux",
-    name: "UI/UX Design",
-    description: "Product design and user research",
-  },
-];
+export const departments = Department.find({ isActive: true });
 
 export const levels: Level[] = [
   { id: "level-1", name: "Level 1", sort_order: 1 },
@@ -73,6 +51,9 @@ export const cohorts: Cohort[] = [
     level_id: "level-1",
     name: "August 2026",
     start_date: "2026-08-01",
+    instructor_id: "instr-1",
+    instructor_ids: ["instr-1"],
+    schedule: [],
   },
   {
     id: "cohort-se-l4-aug",
@@ -80,6 +61,9 @@ export const cohorts: Cohort[] = [
     level_id: "level-4",
     name: "August 2026",
     start_date: "2026-08-01",
+    instructor_id: "instr-1",
+    instructor_ids: ["instr-1"],
+    schedule: [],
   },
   {
     id: "cohort-ds-l1-aug",
@@ -87,6 +71,9 @@ export const cohorts: Cohort[] = [
     level_id: "level-1",
     name: "August 2026",
     start_date: "2026-08-01",
+    instructor_id: "instr-2",
+    instructor_ids: ["instr-2"],
+    schedule: [],
   },
 ];
 

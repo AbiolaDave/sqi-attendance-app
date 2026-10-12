@@ -2,6 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --page-bg: #f8fafc;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --panel: rgba(255, 255, 255, 0.78);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --line: rgba(148, 163, 184, 0.2);
+  --primary: #4f46e5;
+  --primary-soft: rgba(79, 70, 229, 0.12);
+  --cyan: #06b6d4;
+  --green: #10b981;
+  --rose: #f43f5e;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  @apply bg-gray-50 text-gray-900;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(99, 102, 241, 0.12),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(6, 182, 212, 0.1),
+      transparent 22%
+    ),
+    var(--page-bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(79, 70, 229, 0.18);
+}
+
+@layer utilities {
+  .page-shell {
+    @apply min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(6,182,212,0.10),transparent_24%),#f8fafc] px-4 py-6 text-slate-800 sm:px-6 lg:px-8;
+  }
+
+  .panel {
+    @apply rounded-[26px] border border-slate-200/80 bg-white/80 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl;
+  }
+
+  .panel-strong {
+    @apply rounded-[26px] border border-slate-200/80 bg-white/95 shadow-[0_20px_55px_rgba(15,23,42,0.08)];
+  }
+
+  .soft-pill {
+    @apply inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm;
+  }
+
+  .stat-glow {
+    box-shadow: 0 18px 35px rgba(99, 102, 241, 0.12);
+  }
 }

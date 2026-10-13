@@ -13,7 +13,7 @@ export async function authenticateAdmin(email: string, password: string) {
     "+password",
   );
 
-  if (!(await bcrypt.compare(password, user.password))) return null;
+  if (!user || !(await bcrypt.compare(password, user.password))) return null;
 
   user.lastLoginAt = new Date();
   await user.save();

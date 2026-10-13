@@ -1,6 +1,5 @@
 import {
   getStudentsVisibleTo,
-  getProfile,
   getDepartmentName,
   getLevelName,
   getCohortName,
@@ -25,7 +24,6 @@ export default async function AdminStudentsPage() {
   const rows = await Promise.all(
     students.map(async (s) => ({
       student: s,
-      profile: await getProfile(s.id),
       department: await getDepartmentName(s.department_id),
       level: await getLevelName(s.level_id),
       cohort: await getCohortName(s.cohort_id),
@@ -64,11 +62,11 @@ export default async function AdminStudentsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map(({ student, profile, department, level, cohort }) => (
+            {rows.map(({ student, department, level, cohort }) => (
               <tr key={student.id}>
                 <td className="px-4 py-3">
-                  <p className="font-medium">{profile?.full_name ?? "—"}</p>
-                  <p className="text-xs text-gray-400">{profile?.email}</p>
+                  <p className="font-medium">{student.full_name ?? "—"}</p>
+                  <p className="text-xs text-gray-400">{student.email}</p>
                 </td>
                 <td className="px-4 py-3">{department}</td>
                 <td className="px-4 py-3">

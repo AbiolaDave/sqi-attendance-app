@@ -45,7 +45,10 @@ import type {
   PracticeAttempt,
   DepartmentType,
   Profile,
+  Student,
 } from "@/types";
+
+type VisibleStudent = Student & Partial<Pick<Profile, "full_name" | "email">>;
 
 type StoredAssignment = Omit<Assignment, "id" | "questions"> & {
   _id: Types.ObjectId;
@@ -83,6 +86,7 @@ function delay<T>(value: T): Promise<T> {
 // --- Reference data -------------------------------------------------------
 
 export async function getDepartments() {
+  await connectToDatabase();
   const allDepartments = await Department.find();
   // console.log(allDepartments);
   return delay(allDepartments);
@@ -106,10 +110,13 @@ export async function getCourses(departmentId?: string) {
   }));
 }
 export async function getDepartmentName(id: string) {
+  if (!Types.ObjectId.isValid(id)) return "—";
+  await connectToDatabase();
   const department = await Department.findById(id).lean<DepartmentType>();
   return department?.department ?? "—";
 }
 export async function getCohortName(id: string) {
+  if (!Types.ObjectId.isValid(id)) return "—";
   await connectToDatabase();
   const cohort = await CohortModel.findById(id).select("name").lean();
   return cohort?.name ?? "—";
@@ -153,11 +160,13 @@ async function getCourseForCohort(cohort: {
 // --- People ----------------------------------------------------------------
 
 export async function getProfile(id: string): Promise<Profile | undefined> {
+  await connectToDatabase();
   const profile = await User.findById(id).lean<Profile>();
   return profile ?? undefined;
 }
 
 export async function getInstructors() {
+  await connectToDatabase();
   const instructors = await User.find({ role: "instructor" }).lean();
   return delay(
     instructors.map((i) => ({
@@ -221,6 +230,7 @@ export function createCohort(input: {
 }
 
 export async function getCohortIdsForInstructor(instructorId: string) {
+  await connectToDatabase();
   const cohortDocuments = await CohortModel.find({
     $or: [{ instructor_id: instructorId }, { instructor_ids: instructorId }],
   }).lean<CohortRecord[]>();
@@ -230,8 +240,26 @@ export async function getCohortIdsForInstructor(instructorId: string) {
 // RULE: a student can only ever be fetched by themself, an instructor
 // assigned to their cohort, or an admin. Standing in for the
 // `students_select` RLS policy from the earlier Supabase draft.
-export async function getStudentsVisibleTo(user: Profile) {
-  if (user.role === "super_admin") return delay(students);
+export async function getStudentsVisibleTo(
+  user: Profile,
+): Promise<VisibleStudent[]> {
+  await connectToDatabase();
+  if (user.role === "super_admin") {
+    const studentDocuments = await User.find({ role: "student" })
+      .select("_id full_name email department_id level_id cohort_id total_fee amount_paid")
+      .sort({ full_name: 1 })
+      .lean();
+    return studentDocuments.map((student) => ({
+      id: String(student._id),
+      full_name: student.full_name,
+      email: student.email,
+      department_id: student.department_id ?? "",
+      level_id: student.level_id ?? "",
+      cohort_id: student.cohort_id ?? "",
+      total_fee: student.total_fee ?? 0,
+      amount_paid: student.amount_paid ?? 0,
+    }));
+  }
   if (user.role === "instructor") {
     const cohortDocuments = await CohortModel.find({
       $or: [{ instructor_id: user._id }, { instructor_ids: user._id }],
@@ -245,14 +273,20 @@ export async function getStudentsVisibleTo(user: Profile) {
           role: "student",
           cohort_id: { $in: cohortIds },
         })
-          .select("_id full_name email cohort_id total_fee amount_paid")
+          .select("_id full_name email department_id level_id cohort_id total_fee amount_paid")
           .sort({ full_name: 1 })
           .lean()
       : [];
-    // console.log("All studentss", students);
-    return delay(students);
-    // const cohortIds = getCohortIdsForInstructor(user._id);
-    // return delay(students.filter((s) => cohortIds.includes(s.cohort_id)));
+    return students.map((student) => ({
+      id: String(student._id),
+      full_name: student.full_name,
+      email: student.email,
+      department_id: student.department_id ?? "",
+      level_id: student.level_id ?? "",
+      cohort_id: student.cohort_id ?? "",
+      total_fee: student.total_fee ?? 0,
+      amount_paid: student.amount_paid ?? 0,
+    }));
   }
   return delay(students.filter((s) => s.id === user._id));
 }

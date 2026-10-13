@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireProfile } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 import { Department } from "@/models/Departments";
 
 export type CreateDepartmentState = {
@@ -14,6 +16,9 @@ export async function createDepartment(
   formData: FormData,
 ): Promise<CreateDepartmentState> {
   try {
+    await requireProfile(["super_admin"]);
+    await connectToDatabase();
+
     let department = String(formData.get("name") ?? "").trim();
     let description = String(formData.get("description") ?? "").trim();
 

@@ -24,33 +24,27 @@ export async function getCurrentUser(): Promise<UserType | null> {
   const sessionId = cookies().get(SESSION_COOKIE)?.value;
   if (!sessionId) return null;
 
+  await connectToDatabase();
+
   if (sessionId.startsWith("admin:")) {
-    try {
-      await connectToDatabase();
-      const user = await User.findById(sessionId.slice("admin:".length));
-      if (!user || !user.isActive) return null;
-      return {
-        _id: String(user._id),
-        role: user.role === "admin" ? "super_admin" : user.role,
-        full_name: user.full_name,
-        email: user.email,
-        department_id: user.department_id,
-        cohort_id: user.cohort_id,
-        staff_id: user.staff_id,
-        student_id: user.student_id,
-        total_fee: user.total_fee,
-        amount_paid: user.amount_paid,
-        level_id: user.level_id,
-      };
-    } catch {
-      return null;
-    }
+    const user = await User.findById(sessionId.slice("admin:".length));
+    if (!user || !user.isActive) return null;
+    return {
+      _id: String(user._id),
+      role: user.role === "admin" ? "super_admin" : user.role,
+      full_name: user.full_name,
+      email: user.email,
+      department_id: user.department_id,
+      cohort_id: user.cohort_id,
+      staff_id: user.staff_id,
+      student_id: user.student_id,
+      total_fee: user.total_fee,
+      amount_paid: user.amount_paid,
+      level_id: user.level_id,
+    };
   }
 
-  const users = await User.find();
-  return (
-    users.find((u: { _id: string }) => String(u._id) === sessionId) ?? null
-  );
+  return User.findById(sessionId);
 }
 
 export async function requireUser(

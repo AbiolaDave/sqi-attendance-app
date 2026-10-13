@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { authenticateAdmin } from "@/lib/user-auth";
 import { SESSION_COOKIE } from "@/lib/mock-auth/session";
-import { connectDb } from "@/lib/db/connectDb";
 import { connectToDatabase } from "@/lib/mongodb";
-import { seedAdmin } from "@/lib/db/seedAdmin";
 import { User } from "@/models/User";
 
 export async function POST(request: Request) {
-  // seedAdmin();
-
-  connectDb();
-  // connectToDatabase
   try {
+    await connectToDatabase();
     const body = await request.json();
     const email = typeof body.email === "string" ? body.email : "";
     const password = typeof body.password === "string" ? body.password : "";

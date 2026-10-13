@@ -4,7 +4,7 @@ import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 
 export default async function StudentLeaderboardPage() {
   const profile = await requireProfile(["student"]);
-  const student = await getStudentById(profile.id);
+  const student = await getStudentById(profile._id);
   if (!student) return <p className="text-sm text-gray-400">No student record found.</p>;
 
   // RULE: students may only ever see their OWN department's
@@ -12,7 +12,7 @@ export default async function StudentLeaderboardPage() {
   // unlike the instructor/admin versions.
   const entries = await getLeaderboard(student.department_id);
   const departmentName = await getDepartmentName(student.department_id);
-  const myRank = entries.find((e) => e.student_id === profile.id)?.rank;
+  const myRank = entries.find((e) => e.student_id === profile._id)?.rank;
 
   return (
     <div className="space-y-6">
@@ -22,7 +22,7 @@ export default async function StudentLeaderboardPage() {
           {myRank ? `You're ranked #${myRank}.` : "Complete a test, assignment, or practice session to appear here."}
         </p>
       </div>
-      <LeaderboardTable entries={entries} highlightStudentId={profile.id} />
+      <LeaderboardTable entries={entries} highlightStudentId={profile._id} />
     </div>
   );
 }

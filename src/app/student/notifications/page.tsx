@@ -4,7 +4,7 @@ import { NotificationList } from "@/components/notifications/NotificationList";
 
 export default async function NotificationsPage() {
   const profile = await requireProfile();
-  const notifications = await getNotificationsForUser(profile.id);
+  const notifications = await getNotificationsForUser(profile._id);
 
   return (
     <div className="space-y-6 max-w-2xl">

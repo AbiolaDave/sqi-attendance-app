@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { PracticeQuestion } from "@/types";
-import { submitPracticeAnswer } from "@/app/student/practice/actions";
 
 export function PracticeQuiz({ questions }: { questions: PracticeQuestion[] }) {
   const [index, setIndex] = useState(0);
@@ -12,10 +11,9 @@ export function PracticeQuiz({ questions }: { questions: PracticeQuestion[] }) {
   const question = questions[index % questions.length];
   const isCorrect = selected === question.correct_answer;
 
-  async function handleCheck() {
+  function handleCheck() {
     if (!selected) return;
     setRevealed(true);
-    await submitPracticeAnswer(isCorrect);
   }
 
   function handleNext() {

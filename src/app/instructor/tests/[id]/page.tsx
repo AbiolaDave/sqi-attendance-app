@@ -42,7 +42,10 @@ export default async function InstructorAssessmentResultsPage({
       </div>
       <AssessmentResults
         assessment={results.assessment}
-        attempts={results.attempts}
+        attempts={results.attempts.map((attempt) => ({
+          ...attempt,
+          grading_status: attempt.grading_status ?? "needs_review",
+        }))}
       />
     </div>
   );

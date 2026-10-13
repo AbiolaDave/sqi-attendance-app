@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
 
-  if (profile.role === "instructor" && instructor_id !== profile.id) {
+  if (profile.role === "instructor" && instructor_id !== profile._id) {
     return NextResponse.json({ error: "You can only schedule your own classes." }, { status: 403 });
   }
 

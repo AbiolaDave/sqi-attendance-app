@@ -24,7 +24,7 @@ export function PracticeQuizTaker({
     score: number;
     total: number;
     answers: Record<string, string>;
-    correctAnswers: Record<string, string>;
+    correctAnswers: Record<string, string | undefined>;
   } | null>(null);
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState(quiz.duration_minutes * 60);

@@ -16,7 +16,7 @@ import {
 type SubmissionResult = {
   score: number;
   total: number;
-  gradingStatus: "needs_review" | "graded";
+  gradingStatus: "in_progress" | "needs_review" | "graded";
 };
 
 export function TestTaker({
@@ -121,7 +121,9 @@ export function TestTaker({
         <p className="text-sm text-gray-500">
           {result.gradingStatus === "graded"
             ? "Assessment submitted"
-            : "Assessment submitted — instructor review pending"}
+            : result.gradingStatus === "needs_review"
+              ? "Assessment submitted — instructor review pending"
+              : "Assessment in progress"}
         </p>
         <p className="mt-2 text-4xl font-semibold text-brand-600">
           {result.score} / {result.total}

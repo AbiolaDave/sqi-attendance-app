@@ -6,10 +6,10 @@ import {
   DialogBody,
   DialogFooter,
 } from "@material-tailwind/react";
-import type { Cohort, Department, Level } from "@/types";
+import type { Cohort, DepartmentType, Level } from "@/types";
 
 type ModalProps = {
-  departments: Department[];
+  departments: DepartmentType[];
   levels: Level[];
   cohorts: Cohort[];
 };
@@ -145,7 +145,7 @@ const Modal = ({ departments, levels, cohorts }: ModalProps) => {
                     <option value="">Select department</option>
                     {departments.map((department) => (
                       <option key={department.id} value={department.id}>
-                        {department.name}
+                        {department.department}
                       </option>
                     ))}
                   </select>

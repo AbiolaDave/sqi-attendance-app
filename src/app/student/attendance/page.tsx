@@ -10,7 +10,7 @@ const STATUS_DOT: Record<string, string> = {
 
 export default async function StudentAttendancePage() {
   const profile = await requireProfile(["student"]);
-  const rows = await getAttendanceForStudent(profile.id);
+  const rows = await getAttendanceForStudent(profile._id);
 
   const enriched = await Promise.all(
     rows.map(async (r) => {

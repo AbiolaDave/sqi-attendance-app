@@ -4,10 +4,10 @@ import { BalanceBadge } from "@/components/ui/BalanceBadge";
 
 export default async function StudentPaymentsPage() {
   const profile = await requireProfile(["student"]);
-  const student = await getStudentById(profile.id);
+  const student = await getStudentById(profile._id);
   if (!student) return <p className="text-sm text-gray-400">No student record found.</p>;
 
-  const entries = await getBalanceEntriesForStudent(profile, profile.id);
+  const entries = await getBalanceEntriesForStudent(profile, profile._id);
   const outstanding = student.total_fee - student.amount_paid;
 
   return (

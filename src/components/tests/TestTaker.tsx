@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { Test } from "@/types";
 import {
   saveTestDraftAction,
@@ -70,7 +64,9 @@ export function TestTaker({
     const updateTimer = () => {
       const deadline =
         new Date(startedAt).getTime() + test.duration_minutes * 60_000;
-      setRemainingSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+      setRemainingSeconds(
+        Math.max(0, Math.ceil((deadline - Date.now()) / 1000)),
+      );
     };
     updateTimer();
     const interval = window.setInterval(updateTimer, 1000);
@@ -201,9 +197,7 @@ export function TestTaker({
                 }))
               }
               className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${
-                question.type === "coding"
-                  ? "font-mono"
-                  : ""
+                question.type === "coding" ? "font-mono" : ""
               }`}
               placeholder={
                 question.type === "coding"
@@ -216,7 +210,10 @@ export function TestTaker({
       ))}
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        >
           {error}
         </p>
       )}

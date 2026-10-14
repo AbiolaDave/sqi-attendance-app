@@ -4,7 +4,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { authenticateAdmin } from "@/lib/user-auth";
-import { SESSION_COOKIE } from "@/lib/mock-auth/session";
+import {
+  createSessionToken,
+  getSessionCookieOptions,
+  SESSION_COOKIE,
+} from "@/lib/session-token";
 
 export type SignInState = {
   error: string | null;
@@ -24,6 +28,16 @@ export async function signIn(
     if (!user) {
       return { error: "Invalid email or password.", loading: false };
     }
+
+    cookies().set(
+      SESSION_COOKIE,
+      createSessionToken({
+        id: user.id,
+        role: user.role,
+        sessionVersion: user.sessionVersion,
+      }),
+      getSessionCookieOptions(),
+    );
   } catch (err) {
     console.error("Error during sign-in:", err);
     return {
@@ -31,13 +45,6 @@ export async function signIn(
       loading: false,
     };
   }
-
-  cookies().set(SESSION_COOKIE, `admin:${user.id}`, {
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
 
   if (user.role === "super_admin" || user.role === "admin") {
     redirect("/admin");

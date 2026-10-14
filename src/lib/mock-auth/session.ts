@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@/types";
 import { connectToDatabase } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { getSessionClaims, SESSION_COOKIE } from "@/lib/session-token";
 
-export const SESSION_COOKIE = "sqi_mock_session";
+export { SESSION_COOKIE } from "@/lib/session-token";
 
 export interface UserType {
   _id: string;
@@ -21,30 +22,33 @@ export interface UserType {
 }
 
 export async function getCurrentUser(): Promise<UserType | null> {
-  const sessionId = cookies().get(SESSION_COOKIE)?.value;
-  if (!sessionId) return null;
+  const token = cookies().get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const session = getSessionClaims(token);
+  if (!session) return null;
 
   await connectToDatabase();
-
-  if (sessionId.startsWith("admin:")) {
-    const user = await User.findById(sessionId.slice("admin:".length));
-    if (!user || !user.isActive) return null;
-    return {
-      _id: String(user._id),
-      role: user.role === "admin" ? "super_admin" : user.role,
-      full_name: user.full_name,
-      email: user.email,
-      department_id: user.department_id,
-      cohort_id: user.cohort_id,
-      staff_id: user.staff_id,
-      student_id: user.student_id,
-      total_fee: user.total_fee,
-      amount_paid: user.amount_paid,
-      level_id: user.level_id,
-    };
+  const user = await User.findById(session.userId).select("+sessionVersion");
+  if (
+    !user ||
+    !user.isActive ||
+    user.sessionVersion !== session.sessionVersion
+  ) {
+    return null;
   }
-
-  return User.findById(sessionId);
+  return {
+    _id: String(user._id),
+    role: user.role === "admin" ? "super_admin" : user.role,
+    full_name: user.full_name,
+    email: user.email,
+    department_id: user.department_id,
+    cohort_id: user.cohort_id,
+    staff_id: user.staff_id,
+    student_id: user.student_id,
+    total_fee: user.total_fee,
+    amount_paid: user.amount_paid,
+    level_id: user.level_id,
+  };
 }
 
 export async function requireUser(

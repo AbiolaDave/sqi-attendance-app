@@ -2,10 +2,13 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  LEGACY_SESSION_COOKIE,
+  SESSION_COOKIE,
+} from "@/lib/session-token";
 
-const SESSION_COOKIE = "sqi_mock_session";
-
-export async function signOutMock() {
+export async function signOut() {
   cookies().delete(SESSION_COOKIE);
+  cookies().delete(LEGACY_SESSION_COOKIE);
   redirect("/login");
 }

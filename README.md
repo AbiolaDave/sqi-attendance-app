@@ -24,27 +24,46 @@ npm run dev
 ```
 
 The seeded admin signs in with `admin@sqi.edu.ng` and `admin123`.
-Instructor and student identities remain mock users for now.
+Other roles can sign in when their active accounts exist in MongoDB;
+academic records remain mock data for now.
 
 ## How auth currently works
 
-Admin login verifies a bcrypt password hash in MongoDB and stores the
-admin's database ID in the session cookie. Run `npm run seed:admin` once
-to create the default admin; the command is safe to run again.
+Admin login verifies a bcrypt password hash in MongoDB and stores a
+signed JWT in the `sqi_session` HttpOnly cookie. Set `JWT_SECRET` to a
+strong, private value in `.env.local` (and the deployment environment).
+Tokens expire after seven days; each request verifies the JWT and loads
+the active user from MongoDB. Run `npm run seed:admin` once to create
+the default admin; the command is safe to run again.
 
-`src/lib/mock-auth/session.ts` still stores mock instructor and student
-identities in a plain cookie so role-gated pages have something to check.
+Signing out removes the JWT and any legacy session cookie. The dashboard
+uses a server action, and API clients can sign out with
+`POST /api/auth/logout`. Every page calls `requireProfile()` from
+`src/lib/auth.ts`, which delegates to `src/lib/mock-auth/session.ts`.
 
-When you move the remaining roles to the backend:
+## Password changes and reset email
 
-1. Replace the three functions in `session.ts` (`signInAs`,
-   `signOutMock`, `getCurrentUser`) with real session handling —
-   issuing/verifying a JWT or session cookie against your auth
-   endpoint.
-2. Delete `MOCK_USERS`.
-3. **Nothing else needs to change.** Every page calls
-   `requireProfile()` from `src/lib/auth.ts`, which delegates to this
-   file — that's the one seam to repoint.
+Active admins, instructors, and students can change their password from
+the dashboard after confirming their current password, or request a
+one-hour reset link from the sign-in page. Reset tokens are stored only
+as hashes. Changing or resetting a password invalidates the user's
+other JWT sessions.
+
+Configure these private environment variables for Gmail OAuth2 email
+delivery and the reset-link origin:
+
+```env
+APP_URL=https://your-app.example
+GMAIL_USER=your-sender@gmail.com
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+GOOGLE_REFRESH_TOKEN=your-google-oauth-refresh-token
+```
+
+Use your real application URL in `APP_URL`, and keep the credentials in
+`.env.local` locally and in your deployment's secret manager. The
+existing Gmail app-password setting is not used by this OAuth2
+transporter.
 
 ## How data currently works (and doesn't)
 

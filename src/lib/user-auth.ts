@@ -10,10 +10,16 @@ export async function authenticateAdmin(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   await connectDb();
   const user = await User.findOne({ email: normalizedEmail }).select(
-    "+password",
+    "+password +sessionVersion",
   );
 
-  if (!user || !(await bcrypt.compare(password, user.password))) return null;
+  if (
+    !user ||
+    !user.isActive ||
+    !(await bcrypt.compare(password, user.password))
+  ) {
+    return null;
+  }
 
   user.lastLoginAt = new Date();
   await user.save();
@@ -25,5 +31,6 @@ export async function authenticateAdmin(email: string, password: string) {
     role: user.role === "admin" ? "super_admin" : user.role,
     full_name: user.full_name,
     email: user.email,
+    sessionVersion: user.sessionVersion ?? 0,
   };
 }

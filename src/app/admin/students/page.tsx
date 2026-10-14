@@ -39,7 +39,15 @@ export default async function AdminStudentsPage() {
             <Modal
               departments={departments}
               levels={levels}
-              cohorts={cohorts}
+              cohorts={cohorts.map((cohort) => ({
+                ...cohort,
+                  id: String(cohort._id),
+                schedule: cohort.schedule.map((entry, index) => ({
+                  ...entry,
+                  id: `${cohort._id}-${index}`,
+                  cohort_id: String(cohort._id),
+                })),
+              }))}
             />
           </div>
         </div>

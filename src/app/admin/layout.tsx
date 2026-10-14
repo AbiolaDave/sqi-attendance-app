@@ -20,7 +20,6 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireProfile(["super_admin"]);
-  console.log("AdminLayout profile", profile);
 
   return (
     <DashboardShell

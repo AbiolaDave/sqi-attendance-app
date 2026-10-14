@@ -88,14 +88,15 @@ function delay<T>(value: T): Promise<T> {
 export async function getDepartments() {
   await connectToDatabase();
   const allDepartments = await Department.find();
-  // console.log(allDepartments);
   return delay(allDepartments);
 }
 export async function getLevels() {
   return delay(levels);
 }
 export async function getCohorts() {
-  return delay(cohorts);
+  await connectToDatabase();
+  const cohortDocuments = await CohortModel.find().lean<CohortRecord[]>();
+  return delay(cohortDocuments);
 }
 export async function getCourses(departmentId?: string) {
   await connectToDatabase();
@@ -246,7 +247,9 @@ export async function getStudentsVisibleTo(
   await connectToDatabase();
   if (user.role === "super_admin") {
     const studentDocuments = await User.find({ role: "student" })
-      .select("_id full_name email department_id level_id cohort_id total_fee amount_paid")
+      .select(
+        "_id full_name email department_id level_id cohort_id total_fee amount_paid",
+      )
       .sort({ full_name: 1 })
       .lean();
     return studentDocuments.map((student) => ({
@@ -273,7 +276,9 @@ export async function getStudentsVisibleTo(
           role: "student",
           cohort_id: { $in: cohortIds },
         })
-          .select("_id full_name email department_id level_id cohort_id total_fee amount_paid")
+          .select(
+            "_id full_name email department_id level_id cohort_id total_fee amount_paid",
+          )
           .sort({ full_name: 1 })
           .lean()
       : [];
@@ -772,7 +777,6 @@ export async function getTestsVisibleTo(user: Profile): Promise<Test[]> {
     return records.map((record) => toTest(record));
   }
   const student = await User.findById(user._id).select("cohort_id").lean();
-  console.log("Student details", student);
   if (!student?.cohort_id) return [];
   const records = await AssessmentModel.find({
     cohort_id: student.cohort_id,

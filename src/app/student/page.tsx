@@ -12,18 +12,14 @@ import { BalanceBadge } from "@/components/ui/BalanceBadge";
 
 export default async function StudentDashboard() {
   const profile = await requireProfile(["student"]);
-  console.log("Student profile:", profile);
   const student = await getStudentById(profile._id);
-  console.log("Student data:", student);
   if (!profile)
     return <p className="text-sm text-gray-400">No student record found.</p>;
   if (!profile.cohort_id)
     return <p className="text-sm text-gray-400">No cohort assigned.</p>;
 
   const cohortName = await getCohortName(profile.cohort_id);
-  console.log("Cohort name:", cohortName);
   const attendanceRows = await getAttendanceForStudent(profile._id);
-  console.log("Attendance rows:", attendanceRows);
   const total = attendanceRows.length;
   const present = attendanceRows.filter(
     (r) => r.status === "present" || r.status === "late",

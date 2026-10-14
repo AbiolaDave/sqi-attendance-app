@@ -1,4 +1,9 @@
-import { getDepartments, getInstructors, getStudentsVisibleTo, getCohorts } from "@/lib/data/queries";
+import {
+  getDepartments,
+  getInstructors,
+  getStudentsVisibleTo,
+  getCohorts,
+} from "@/lib/data/queries";
 import { requireProfile } from "@/lib/auth";
 import { StatCard } from "@/components/dashboard/StatCard";
 
@@ -11,13 +16,19 @@ export default async function AdminDashboard() {
     getCohorts(),
   ]);
 
-  const totalOutstanding = students.reduce((sum, s) => sum + (s.total_fee - s.amount_paid), 0);
+
+  const totalOutstanding = students.reduce(
+    (sum, s) => sum + (s.total_fee - s.amount_paid),
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Institution Overview</h1>
-        <p className="text-sm text-gray-500">A snapshot across every department and cohort.</p>
+        <p className="text-sm text-gray-500">
+          A snapshot across every department and cohort.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -36,7 +47,8 @@ export default async function AdminDashboard() {
       </div>
 
       <p className="text-xs text-gray-400">
-        Attendance, tests and leaderboard summaries land here in Phase 2–4 once those modules are built.
+        Attendance, tests and leaderboard summaries land here in Phase 2–4 once
+        those modules are built.
       </p>
     </div>
   );
